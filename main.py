@@ -13,24 +13,17 @@ KEY_FILE = "master_key.key" # Stores the securely derived encryption key
 
 # --- Helper Function: Key Derivation (KDF) ---
 def derive_key(master_password: str, salt: bytes) -> bytes:
-    """Derives a Fernet key from a user's master password using PBKDF2."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=480000, # High iteration count for security
+        iterations=480000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
     return key
 
 # --- Helper Function: Master Key Management ---
 def get_master_key():
-    """
-    Handles user login, key generation, and key storage.
-    
-    Returns:
-        Fernet: An initialized Fernet object for encryption/decryption, or None on failure.
-    """
     if os.path.exists(KEY_FILE):
         # Key file exists: Ask for master password to load and decrypt
         print("\n🔒 Accessing Encrypted Vault...")
@@ -42,15 +35,21 @@ def get_master_key():
             print("❌ Error reading key file. Vault may be corrupted.")
             return None
 
-        for _ in range(3): # Give the user 3 tries
-            master_password = input("Enter Master Password to unlock vault: ")
+        for attempt in range(1, 4): # Give the user 3 tries
+            master_password = input(f"Enter Master Password to unlock vault (Attempt {attempt}/3, type 'e' to exit): ")
+            
+            # NEW FEATURE: Check for exit command
+            if master_password.lower() in ('e', 'exit'):
+                print("🛑 Vault access canceled by user. Exiting.")
+                return None
+
             derived_key = derive_key(master_password, salt)
             
             if derived_key == stored_key:
                 print("✅ Vault unlocked successfully.")
                 return Fernet(derived_key)
             else:
-                print("❌ Invalid Master Password.")
+                print(f"❌ Invalid Master Password. {3 - attempt} attempts remaining.")
         
         print("🛑 Too many failed attempts. Exiting.")
         return None
@@ -125,7 +124,7 @@ def generate_strong_password(length=12, exclude_chars=""):
 # --- Interactive CLI Function ---
 def interactive_password_saver():
     
-    print("✨ Welcome to the Interactive Password Generator (v5.0 - Secure)! ✨")
+    print("✨ Welcome to the Interactive Password Generator (v5.1 - Secure)! ✨")
     print("➡️  Guarantees: 1 Uppercase, 1 Lowercase, 1 Digit, 1 Symbol.")
     print("-" * 40)
     
